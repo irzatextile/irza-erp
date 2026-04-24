@@ -16,21 +16,15 @@ export async function POST(request) {
 
     if (error || !product) throw new Error('Product not found')
 
-    const prompt = `You are an SEO expert for a Pakistani textile ecommerce store (Irza Textile). Analyze this product and provide SEO optimization.
+    const prompt = `You are an SEO expert for a Pakistani textile ecommerce store. Analyze this product and respond ONLY with a raw JSON object. No markdown, no backticks, no explanation, just the JSON.
 
 Product: ${product.parent_title}
 Type: ${product.product_type || 'Unstitched Fabric'}
 Price: Rs ${product.price}
 Tags: ${product.tags?.join(', ') || 'none'}
 
-Respond ONLY with a JSON object, no markdown, no explanation:
-{
-  "seo_title": "optimized title under 60 chars",
-  "seo_description": "meta description under 160 chars",
-  "seo_score": number between 1-100,
-  "seo_tier": "green" or "yellow" or "red",
-  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
-}`
+Return exactly this JSON structure:
+{"seo_title":"optimized title under 60 chars","seo_description":"meta description under 160 chars","seo_score":75,"seo_tier":"green","suggestions":["suggestion 1","suggestion 2","suggestion 3"]}`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -48,7 +42,8 @@ Respond ONLY with a JSON object, no markdown, no explanation:
 
     const aiData = await response.json()
     const text = aiData.content[0].text
-    const clean = text.replace(/```json|```/g, '').trim() const seoResult = JSON.parse(clean)
+    const clean = text.replace(/```json|```/g, '').trim()
+    const seoResult = JSON.parse(clean)
 
     const { error: updateError } = await supabase
       .from('products')
