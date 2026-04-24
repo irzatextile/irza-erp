@@ -10,6 +10,8 @@ export default function InventoryPage() {
   const [stockFilter, setStockFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [syncMsg, setSyncMsg] = useState('')
+  const [analyzingId, setAnalyzingId] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState(null)
   const supabase = createClient()
 
   const fetchProducts = useCallback(async () => {
@@ -44,6 +46,27 @@ export default function InventoryPage() {
     setSyncing(false)
   }
 
+  async function handleSEO(product) {
+    setAnalyzingId(product.id)
+    try {
+      const res = await fetch('/api/seo/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: product.id }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSelectedProduct({ ...product, ...data })
+        fetchProducts()
+      } else {
+        alert('SEO Error: ' + data.error)
+      }
+    } catch (err) {
+      alert('SEO Error: ' + err.message)
+    }
+    setAnalyzingId(null)
+  }
+
   const totalProducts = new Set(products.map(p => p.shopify_product_id)).size
   const totalVariants = products.length
   const totalUnits = products.reduce((sum, p) => sum + (p.inventory_quantity || 0), 0)
@@ -68,13 +91,50 @@ export default function InventoryPage() {
 
   function getSEOBadge(tier) {
     if (!tier) return <span className="badge badge-gray">○ None</span>
-    if (tier === 'green') return <span className="badge badge-green">🟢 {tier}</span>
-    if (tier === 'yellow') return <span className="badge badge-yellow">🟡 {tier}</span>
-    return <span className="badge badge-red">🔴 {tier}</span>
+    if (tier === 'green') return <span className="badge badge-green">● Good</span>
+    if (tier === 'yellow') return <span className="badge badge-yellow">● Fair</span>
+    return <span className="badge badge-red">● Poor</span>
   }
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px' }}>
+      {selectedProduct && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#000000aa', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setSelectedProduct(null)}>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '32px', maxWidth: '500px', width: '90%' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '600' }}>SEO Analysis</h2>
+              <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: '20px', cursor: 'pointer' }}>×</button>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>PRODUCT</div>
+              <div style={{ fontSize: '13px' }}>{selectedProduct.parent_title}</div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>SEO SCORE</div>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: selectedProduct.seo_tier === 'green' ? 'var(--green)' : selectedProduct.seo_tier === 'yellow' ? 'var(--yellow)' : 'var(--red)' }}>
+                {selectedProduct.seo_score}/100
+              </div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>OPTIMIZED TITLE</div>
+              <div style={{ fontSize: '13px', background: 'var(--bg3)', padding: '8px 12px', borderRadius: 'var(--radius)' }}>{selectedProduct.seo_title}</div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '4px' }}>META DESCRIPTION</div>
+              <div style={{ fontSize: '13px', background: 'var(--bg3)', padding: '8px 12px', borderRadius: 'var(--radius)' }}>{selectedProduct.seo_description}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text2)', marginBottom: '8px' }}>SUGGESTIONS</div>
+              {selectedProduct.suggestions?.map((s, i) => (
+                <div key={i} style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '6px' }}>• {s}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600' }}>Inventory</h1>
@@ -127,14 +187,14 @@ export default function InventoryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Product', 'SKU', 'Variant', 'Price', 'Stock', 'Status', 'SEO'].map(h => (
+                {['Product', 'SKU', 'Variant', 'Price', 'Stock', 'Status', 'SEO', 'Action'].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', color: 'var(--text2)', fontWeight: '500', letterSpacing: '0.5px' }}>{h.toUpperCase()}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {products.map((product, i) => (
-                <tr key={product.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : '#ffffff04', cursor: 'pointer' }}
+                <tr key={product.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : '#ffffff04' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
                   onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : '#ffffff04'}>
                   <td style={{ padding: '12px 16px' }}>
@@ -149,6 +209,14 @@ export default function InventoryPage() {
                   <td style={{ padding: '12px 16px' }}>{getStockBadge(product.inventory_quantity)}</td>
                   <td style={{ padding: '12px 16px' }}><span className={`badge ${product.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{product.status}</span></td>
                   <td style={{ padding: '12px 16px' }}>{getSEOBadge(product.seo_tier)}</td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <button
+                      onClick={() => handleSEO(product)}
+                      disabled={analyzingId === product.id}
+                      style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text2)', cursor: 'pointer' }}>
+                      {analyzingId === product.id ? '⏳' : '🔍 SEO'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
