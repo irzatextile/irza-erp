@@ -4,11 +4,22 @@ export const maxDuration = 60
 
 import { createServiceClient } from '@/lib/supabase'
 
+async function getShopifyToken(supabase) {
+  const { data } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'shopify_access_token')
+    .single()
+
+  if (data?.value) return data.value
+  return process.env.SHOPIFY_ACCESS_TOKEN
+}
+
 export async function POST() {
   try {
     const domain = process.env.SHOPIFY_STORE_DOMAIN
-    const token = process.env.SHOPIFY_ACCESS_TOKEN
     const supabase = createServiceClient()
+    const token = await getShopifyToken(supabase)
 
     let products = []
     let url = `https://${domain}/admin/api/2024-01/products.json?limit=250&fields=id,title,status,variants,images,product_type,tags,handle`
