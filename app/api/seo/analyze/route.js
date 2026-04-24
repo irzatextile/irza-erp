@@ -48,7 +48,7 @@ Respond ONLY with a JSON object, no markdown, no explanation:
 
     const aiData = await response.json()
     const text = aiData.content[0].text
-    const seoResult = JSON.parse(text)
+    const clean = text.replace(/```json|```/g, '').trim() const seoResult = JSON.parse(clean)
 
     const { error: updateError } = await supabase
       .from('products')
