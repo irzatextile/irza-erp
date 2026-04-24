@@ -187,7 +187,7 @@ export default function InventoryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Product', 'SKU', 'Variant', 'Price', 'Stock', 'Status', 'SEO', 'Action'].map(h => (
+                {['Product', 'SKU', 'Variant', 'Price', 'Stock', 'Status', 'SEO'].map(h => (
                   <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', color: 'var(--text2)', fontWeight: '500', letterSpacing: '0.5px' }}>{h.toUpperCase()}</th>
                 ))}
               </tr>
@@ -208,7 +208,9 @@ export default function InventoryPage() {
                   <td style={{ padding: '12px 16px' }}><span style={{ color: 'var(--gold)', fontWeight: '500' }}>Rs {parseFloat(product.price).toLocaleString()}</span></td>
                   <td style={{ padding: '12px 16px' }}>{getStockBadge(product.inventory_quantity)}</td>
                   <td style={{ padding: '12px 16px' }}><span className={`badge ${product.status === 'active' ? 'badge-green' : 'badge-gray'}`}>{product.status}</span></td>
-                  <td style={{ padding: '12px 16px' }}>{getSEOBadge(product.seo_tier)}</td>
+                  <td style={{ padding: '12px 16px', cursor: 'pointer' }} onClick={() => handleSEO(product)}>
+  {analyzingId === product.id ? '⏳...' : getSEOBadge(product.seo_tier)}
+</td>
                   <td style={{ padding: '12px 16px' }}>
                     <button
                       onClick={() => handleSEO(product)}
